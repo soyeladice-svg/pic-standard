@@ -1,0 +1,45 @@
+name: Temporary validate PIC 156
+
+on:
+  push:
+    branches:
+      - validate/pic156-full-tests-20260928
+    paths:
+      - '.github/workflows/temp-validate-pic156.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            sdk-python/requirements.txt
+            sdk-python/requirements-dev.txt
+            sdk-python/requirements-langgraph.txt
+            sdk-python/requirements-mcp.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r sdk-python/requirements.txt \
+                      -r sdk-python/requirements-dev.txt \
+                      -r sdk-python/requirements-langgraph.txt \
+                      -r sdk-python/requirements-mcp.txt
+          pip install -e ".[crypto]"
+      - name: Conformance
+        run: python -m conformance.run
+      - name: Requested pytest suite
+        env:
+          PYTHONPATH: ${{ github.workspace }}/sdk-python
+        run: pytest tests/ -q
+      - name: Ruff
+        run: |
+          ruff check .
+          ruff format --check .
